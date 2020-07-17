@@ -9,25 +9,25 @@ class DataQueue:
         self._is_running = False
         self._scope = scope
 
-        with tf.variable_scope(self.scope):
+        with tf.compat.v1.variable_scope(self.scope):
             dtypes = [ dtype,    dtype,    dtype,    tf.int32, dtype,    dtype,    dtype,    dtype,    tf.int32, tf.int32, tf.int32 ]
             shapes = [ [None, ], [None, ], [None,3], [None, ], [None,3], [None, ], [None, ], [None,3], [None, ], [None, ], [None, ] ]   
             
             #define placeholders
-            self._E          = tf.placeholder(dtypes[ 0], shape=shapes[ 0], name="E")
-            self._Ea         = tf.placeholder(dtypes[ 1], shape=shapes[ 1], name="Ea")
-            self._F          = tf.placeholder(dtypes[ 2], shape=shapes[ 2], name="F")
-            self._Z          = tf.placeholder(dtypes[ 3], shape=shapes[ 3], name="Z")
-            self._D          = tf.placeholder(dtypes[ 4], shape=shapes[ 4], name="D")      
-            self._Q          = tf.placeholder(dtypes[ 5], shape=shapes[ 5], name="Q")  
-            self._Qa         = tf.placeholder(dtypes[ 6], shape=shapes[ 6], name="Qa")  
-            self._R          = tf.placeholder(dtypes[ 7], shape=shapes[ 7], name="R")      
-            self._idx_i      = tf.placeholder(dtypes[ 8], shape=shapes[ 8], name="idx_i") 
-            self._idx_j      = tf.placeholder(dtypes[ 9], shape=shapes[ 9], name="idx_j") 
-            self._batch_seg  = tf.placeholder(dtypes[10], shape=shapes[10], name="batch_seg") 
+            self._E          = tf.compat.v1.placeholder(dtypes[ 0], shape=shapes[ 0], name="E")
+            self._Ea         = tf.compat.v1.placeholder(dtypes[ 1], shape=shapes[ 1], name="Ea")
+            self._F          = tf.compat.v1.placeholder(dtypes[ 2], shape=shapes[ 2], name="F")
+            self._Z          = tf.compat.v1.placeholder(dtypes[ 3], shape=shapes[ 3], name="Z")
+            self._D          = tf.compat.v1.placeholder(dtypes[ 4], shape=shapes[ 4], name="D")      
+            self._Q          = tf.compat.v1.placeholder(dtypes[ 5], shape=shapes[ 5], name="Q")  
+            self._Qa         = tf.compat.v1.placeholder(dtypes[ 6], shape=shapes[ 6], name="Qa")  
+            self._R          = tf.compat.v1.placeholder(dtypes[ 7], shape=shapes[ 7], name="R")      
+            self._idx_i      = tf.compat.v1.placeholder(dtypes[ 8], shape=shapes[ 8], name="idx_i") 
+            self._idx_j      = tf.compat.v1.placeholder(dtypes[ 9], shape=shapes[ 9], name="idx_j") 
+            self._batch_seg  = tf.compat.v1.placeholder(dtypes[10], shape=shapes[10], name="batch_seg") 
             placeholders =  [ self.E, self.Ea, self.F, self.Z, self.D, self.Q, self.Qa, self.R, self.idx_i, self.idx_j, self.batch_seg]
 
-            self._queue  = tf.PaddingFIFOQueue(capacity=capacity, dtypes=dtypes, shapes=shapes, name="queue")
+            self._queue  = tf.queue.PaddingFIFOQueue(capacity=capacity, dtypes=dtypes, shapes=shapes, name="queue")
             self._enqueue_op = self.queue.enqueue(placeholders)
             self._dequeue_op = self.queue.dequeue()
 
@@ -137,5 +137,4 @@ class DataQueue:
     def is_running(self):
         return self._is_running
 
-    
     

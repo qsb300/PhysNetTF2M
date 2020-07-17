@@ -9,7 +9,7 @@ class InteractionBlock(NeuronLayer):
 
     def __init__(self, K, F, num_residual_atomic, num_residual_interaction, activation_fn=None, seed=None, scope=None, keep_prob=1.0, dtype=tf.float32):
         super().__init__(K, F, activation_fn)
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             #interaction layer
             self._interaction = InteractionLayer(K, F, num_residual_interaction, activation_fn=activation_fn, seed=seed, scope="interaction_layer", keep_prob=keep_prob, dtype=dtype)
 

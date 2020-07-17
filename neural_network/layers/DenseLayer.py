@@ -9,18 +9,18 @@ class DenseLayer(NeuronLayer):
 
     def __init__(self, n_in, n_out, activation_fn=None, W_init=None, b_init=None, use_bias=True, regularization=True, seed=None, scope=None, dtype=tf.float32):
         super().__init__(n_in, n_out, activation_fn)
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             #define weight
             if W_init is None:
                 W_init = semi_orthogonal_glorot_weights(n_in, n_out, seed=seed) 
             self._W  = tf.Variable(W_init, name="W", dtype=dtype)  
-            tf.add_to_collection(tf.GraphKeys.WEIGHTS, self.W)
-            tf.summary.histogram("weights", self.W)        
+            tf.compat.v1.add_to_collection(tf.compat.v1.GraphKeys.WEIGHTS, self.W)
+            tf.compat.v1.summary.histogram("weights", self.W)        
 
             #define l2 loss term for regularization
             if regularization:
                 self._l2loss = tf.nn.l2_loss(self.W, name="l2loss") 
-                tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, self.l2loss)
+                tf.compat.v1.add_to_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES, self.l2loss)
             else:
                 self._l2loss = 0.0
 
@@ -30,8 +30,8 @@ class DenseLayer(NeuronLayer):
                 if b_init is None:
                     b_init = tf.zeros([self.n_out], name="b_init", dtype=dtype)
                 self._b = tf.Variable(b_init, name="b", dtype=dtype)
-                tf.add_to_collection(tf.GraphKeys.BIASES, self.b)
-                tf.summary.histogram("biases",  self.b)       
+                tf.compat.v1.add_to_collection(tf.compat.v1.GraphKeys.BIASES, self.b)
+                tf.compat.v1.summary.histogram("biases",  self.b)       
 
     @property
     def W(self):
@@ -55,5 +55,5 @@ class DenseLayer(NeuronLayer):
             y += self.b
         if self.activation_fn is not None: 
             y = self.activation_fn(y)
-        tf.add_to_collection(tf.GraphKeys.ACTIVATIONS, y)
+        tf.compat.v1.add_to_collection(tf.compat.v1.GraphKeys.ACTIVATIONS, y)
         return y

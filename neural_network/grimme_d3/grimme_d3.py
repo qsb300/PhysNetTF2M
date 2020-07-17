@@ -41,7 +41,7 @@ def _smootherstep(r, cutoff):
     x3 = x2*x
     x4 = x3*x
     x5 = x4*x
-    return tf.where(r <= cuton, tf.ones_like(x), tf.where(r >= cutoff, tf.zeros_like(x), 6*x5-15*x4+10*x3))
+    return tf.compat.v1.where(r <= cuton, tf.ones_like(x), tf.compat.v1.where(r >= cutoff, tf.zeros_like(x), 6*x5-15*x4+10*x3))
 
 def _ncoord(Zi, Zj, r, idx_i, cutoff=None, k1=d3_k1, rcov=d3_rcov):
     '''
@@ -52,7 +52,7 @@ def _ncoord(Zi, Zj, r, idx_i, cutoff=None, k1=d3_k1, rcov=d3_rcov):
     damp = 1.0/(1.0+tf.exp(-k1*(rr-1.0)))
     if cutoff is not None:
         damp *= _smootherstep(r, cutoff)
-    return tf.segment_sum(damp,idx_i)
+    return tf.math.segment_sum(damp,idx_i)
 
 def _getc6(ZiZj, nci, ncj, c6ab=d3_c6ab, k3=d3_k3):
     '''
@@ -71,12 +71,12 @@ def _getc6(ZiZj, nci, ncj, c6ab=d3_c6ab, k3=d3_k3):
             cn1 = c6ab_[:,i,j,1]
             cn2 = c6ab_[:,i,j,2]
             r = (cn1-nci)**2 + (cn2-ncj)**2
-            r_save = tf.where(r < r_save, r, r_save)
-            c6mem  = tf.where(r < r_save, cn0, c6mem)
+            r_save = tf.compat.v1.where(r < r_save, r, r_save)
+            c6mem  = tf.compat.v1.where(r < r_save, cn0, c6mem)
             tmp1 = tf.exp(k3*r)
-            rsum += tf.where(cn0 > 0.0, tmp1,     tf.zeros_like(tmp1))
-            csum += tf.where(cn0 > 0.0, tmp1*cn0, tf.zeros_like(tmp1))
-    c6 = tf.where(rsum > 0.0, csum/rsum, c6mem)
+            rsum += tf.compat.v1.where(cn0 > 0.0, tmp1,     tf.zeros_like(tmp1))
+            csum += tf.compat.v1.where(cn0 > 0.0, tmp1*cn0, tf.zeros_like(tmp1))
+    c6 = tf.compat.v1.where(rsum > 0.0, csum/rsum, c6mem)
     return c6
 
 def edisp(Z, r, idx_i, idx_j, cutoff=None, r2=None, 
@@ -121,10 +121,10 @@ def edisp(Z, r, idx_i, idx_j, cutoff=None, r2=None,
         cut8tmp8 = cut8 + tmp8
         e6 = 1/(r6+tmp6) - 1/cut6tmp6 + 6*cut6/cut6tmp6**2 * (r/cutoff-1)
         e8 = 1/(r8+tmp8) - 1/cut8tmp8 + 8*cut8/cut8tmp8**2 * (r/cutoff-1)
-        e6 = tf.where(r < cutoff, e6, tf.zeros_like(e6))
-        e8 = tf.where(r < cutoff, e8, tf.zeros_like(e8))
+        e6 = tf.compat.v1.where(r < cutoff, e6, tf.zeros_like(e6))
+        e8 = tf.compat.v1.where(r < cutoff, e8, tf.zeros_like(e8))
     e6 = -0.5*s6*c6*e6
     e8 = -0.5*s8*c8*e8
-    return tf.segment_sum(e6+e8,idx_i)
+    return tf.math.segment_sum(e6+e8,idx_i)
 
 

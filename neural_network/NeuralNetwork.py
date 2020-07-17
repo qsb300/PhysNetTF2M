@@ -50,13 +50,13 @@ class NeuralNetwork:
         self._activation_fn = activation_fn
         self._scope = scope
 
-        with tf.variable_scope(self.scope):
+        with tf.compat.v1.variable_scope(self.scope):
             #keep probability for dropout regularization
-            self._keep_prob = tf.placeholder_with_default(1.0, shape=[], name="keep_prob")
+            self._keep_prob = tf.compat.v1.placeholder_with_default(1.0, shape=[], name="keep_prob")
 
             #atom embeddings (we go up to Pu(94), 95 because indices start with 0)
-            self._embeddings = tf.Variable(tf.random_uniform([95, self.F], minval=-np.sqrt(3), maxval=np.sqrt(3), seed=seed, dtype=dtype), name="embeddings", dtype=dtype)
-            tf.summary.histogram("embeddings", self.embeddings)  
+            self._embeddings = tf.Variable(tf.random.uniform([95, self.F], minval=-np.sqrt(3), maxval=np.sqrt(3), seed=seed, dtype=dtype), name="embeddings", dtype=dtype)
+            tf.compat.v1.summary.histogram("embeddings", self.embeddings)  
 
             #radial basis function expansion layer
             self._rbf_layer = RBFLayer(K, sr_cut, scope="rbf_layer")
@@ -66,22 +66,22 @@ class NeuralNetwork:
                 self._s6 = tf.nn.softplus(tf.Variable(softplus_inverse(d3_s6), name="s6", dtype=dtype, trainable=True))
             else:
                 self._s6 = tf.Variable(s6, name="s6", dtype=dtype, trainable=False)
-            tf.summary.scalar("d3-s6", self.s6)
+            tf.compat.v1.summary.scalar("d3-s6", self.s6)
             if s8 is None:
                 self._s8 = tf.nn.softplus(tf.Variable(softplus_inverse(d3_s8), name="s8", dtype=dtype, trainable=True))
             else:
                 self._s8 = tf.Variable(s8, name="s8", dtype=dtype, trainable=False)
-            tf.summary.scalar("d3-s8", self.s8)
+            tf.compat.v1.summary.scalar("d3-s8", self.s8)
             if a1 is None:
                 self._a1 = tf.nn.softplus(tf.Variable(softplus_inverse(d3_a1), name="a1", dtype=dtype, trainable=True))
             else:
                 self._a1 = tf.Variable(a1, name="a1", dtype=dtype, trainable=False)
-            tf.summary.scalar("d3-a1", self.a1)
+            tf.compat.v1.summary.scalar("d3-a1", self.a1)
             if a2 is None:
                 self._a2 = tf.nn.softplus(tf.Variable(softplus_inverse(d3_a2), name="a2", dtype=dtype, trainable=True))
             else:
                 self._a2 = tf.Variable(a2, name="a2", dtype=dtype, trainable=False)
-            tf.summary.scalar("d3-a2", self.a2)
+            tf.compat.v1.summary.scalar("d3-a2", self.a2)
 
             #initialize output scale/shift variables
             self._Eshift = tf.Variable(tf.constant(Eshift, shape=[95], dtype=dtype), name="Eshift", dtype=dtype)
@@ -99,7 +99,7 @@ class NeuralNetwork:
                     OutputBlock(F, num_residual_output, activation_fn=activation_fn, seed=seed, scope="output_block"+str(i), keep_prob=self.keep_prob, dtype=dtype))
                                 
             #saver node to save/restore the model
-            self._saver = tf.train.Saver(self.variables, save_relative_paths=True, max_to_keep=50)
+            self._saver = tf.compat.v1.train.Saver(self.variables, save_relative_paths=True, max_to_keep=50)
 
     def calculate_interatomic_distances(self, R, idx_i, idx_j, offsets=None):
         #calculate interatomic distances
@@ -107,12 +107,12 @@ class NeuralNetwork:
         Rj = tf.gather(R, idx_j)
         if offsets is not None:
             Rj += offsets
-        Dij = tf.sqrt(tf.nn.relu(tf.reduce_sum((Ri-Rj)**2, -1))) #relu prevents negative numbers in sqrt
+        Dij = tf.sqrt(tf.nn.relu(tf.reduce_sum(input_tensor=(Ri-Rj)**2, axis=-1))) #relu prevents negative numbers in sqrt
         return Dij
 
     #calculates the atomic energies, charges and distances (needed if unscaled charges are wanted e.g. for loss function)
     def atomic_properties(self, Z, R, idx_i, idx_j, offsets=None, sr_idx_i=None, sr_idx_j=None, sr_offsets=None):
-        with tf.name_scope("atomic_properties"):
+        with tf.compat.v1.name_scope("atomic_properties"):
             #calculate distances (for long range interaction)
             Dij_lr = self.calculate_interatomic_distances(R, idx_i, idx_j, offsets=offsets)
             #optionally, it is possible to calculate separate distances for short range interactions (computational efficiency)
@@ -141,17 +141,17 @@ class NeuralNetwork:
                 #compute non-hierarchicality loss
                 out2 = out**2
                 if i > 0:
-                    nhloss += tf.reduce_mean(out2/(out2 + lastout2 + 1e-7))
+                    nhloss += tf.reduce_mean(input_tensor=out2/(out2 + lastout2 + 1e-7))
                 lastout2 = out2
 
             #apply scaling/shifting
-            Ea = tf.gather(self.Escale, Z) * Ea + tf.gather(self.Eshift, Z) + 0*tf.reduce_sum(R, -1) #last term necessary to guarantee no "None" in force evaluation
+            Ea = tf.gather(self.Escale, Z) * Ea + tf.gather(self.Eshift, Z) + 0*tf.reduce_sum(input_tensor=R, axis=-1) #last term necessary to guarantee no "None" in force evaluation
             Qa = tf.gather(self.Qscale, Z) * Qa + tf.gather(self.Qshift, Z)
         return Ea, Qa, Dij_lr, nhloss
 
     #calculates the energy given the scaled atomic properties (in order to prevent recomputation if atomic properties are calculated)
     def energy_from_scaled_atomic_properties(self, Ea, Qa, Dij, Z, idx_i, idx_j, batch_seg=None):
-        with tf.name_scope("energy_from_atomic_properties"):
+        with tf.compat.v1.name_scope("energy_from_atomic_properties"):
             if batch_seg is None:
                 batch_seg = tf.zeros_like(Z)
             #add electrostatic and dispersion contribution to atomic energy
@@ -162,18 +162,18 @@ class NeuralNetwork:
                     Ea += d3_autoev*edisp(Z, Dij/d3_autoang, idx_i, idx_j, s6=self.s6, s8=self.s8, a1=self.a1, a2=self.a2, cutoff=self.lr_cut/d3_autoang)
                 else:
                     Ea += d3_autoev*edisp(Z, Dij/d3_autoang, idx_i, idx_j, s6=self.s6, s8=self.s8, a1=self.a1, a2=self.a2)
-        return tf.squeeze(tf.segment_sum(Ea, batch_seg))
+        return tf.squeeze(tf.math.segment_sum(Ea, batch_seg))
 
     #calculates the energy and forces given the scaled atomic atomic properties (in order to prevent recomputation if atomic properties are calculated)
     def energy_and_forces_from_scaled_atomic_properties(self, Ea, Qa, Dij, Z, R, idx_i, idx_j, batch_seg=None):
-        with tf.name_scope("energy_and_forces_from_atomic_properties"):
+        with tf.compat.v1.name_scope("energy_and_forces_from_atomic_properties"):
             energy = self.energy_from_scaled_atomic_properties(Ea, Qa, Dij, Z, idx_i, idx_j, batch_seg)
-            forces = -tf.convert_to_tensor(tf.gradients(tf.reduce_sum(energy), R)[0])
+            forces = -tf.convert_to_tensor(value=tf.gradients(ys=tf.reduce_sum(input_tensor=energy), xs=R)[0])
         return energy, forces
 
     #calculates the energy given the atomic properties (in order to prevent recomputation if atomic properties are calculated)
     def energy_from_atomic_properties(self, Ea, Qa, Dij, Z, idx_i, idx_j, Q_tot=None, batch_seg=None):
-        with tf.name_scope("energy_from_atomic_properties"):
+        with tf.compat.v1.name_scope("energy_from_atomic_properties"):
             if batch_seg is None:
                 batch_seg = tf.zeros_like(Z)
             #scale charges such that they have the desired total charge
@@ -182,36 +182,36 @@ class NeuralNetwork:
 
     #calculates the energy and force given the atomic properties (in order to prevent recomputation if atomic properties are calculated)
     def energy_and_forces_from_atomic_properties(self, Ea, Qa, Dij, Z, R, idx_i, idx_j, Q_tot=None, batch_seg=None):
-        with tf.name_scope("energy_and_forces_from_atomic_properties"):
+        with tf.compat.v1.name_scope("energy_and_forces_from_atomic_properties"):
             energy = self.energy_from_atomic_properties(Ea, Qa, Dij, Z, idx_i, idx_j, Q_tot, batch_seg)
-            forces = -tf.convert_to_tensor(tf.gradients(tf.reduce_sum(energy), R)[0])
+            forces = -tf.convert_to_tensor(value=tf.gradients(ys=tf.reduce_sum(input_tensor=energy), xs=R)[0])
         return energy, forces
 
     #calculates the total energy (including electrostatic interactions)
     def energy(self, Z, R, idx_i, idx_j, Q_tot=None, batch_seg=None, offsets=None, sr_idx_i=None, sr_idx_j=None, sr_offsets=None):
-        with tf.name_scope("energy"):
+        with tf.compat.v1.name_scope("energy"):
             Ea, Qa, Dij, _ = self.atomic_properties(Z, R, idx_i, idx_j, offsets, sr_idx_i, sr_idx_j, sr_offsets)
             energy = self.energy_from_atomic_properties(Ea, Qa, Dij, Z, idx_i, idx_j, Q_tot, batch_seg)
         return energy 
 
     #calculates the total energy and forces (including electrostatic interactions)
     def energy_and_forces(self, Z, R, idx_i, idx_j, Q_tot=None, batch_seg=None, offsets=None, sr_idx_i=None, sr_idx_j=None, sr_offsets=None):
-        with tf.name_scope("energy_and_forces"):
+        with tf.compat.v1.name_scope("energy_and_forces"):
             Ea, Qa, Dij, _ = self.atomic_properties(Z, R, idx_i, idx_j, offsets, sr_idx_i, sr_idx_j, sr_offsets)
             energy, forces = self.energy_and_forces_from_atomic_properties(Ea, Qa, Dij, Z, R, idx_i, idx_j, Q_tot, batch_seg)
         return energy, forces
 
     #returns scaled charges such that the sum of the partial atomic charges equals Q_tot (defaults to 0)
     def scaled_charges(self, Z, Qa, Q_tot=None, batch_seg=None):
-        with tf.name_scope("scaled_charges"):
+        with tf.compat.v1.name_scope("scaled_charges"):
             if batch_seg is None:
                 batch_seg = tf.zeros_like(Z)
             #number of atoms per batch (needed for charge scaling)
-            Na_per_batch = tf.segment_sum(tf.ones_like(batch_seg, dtype=self.dtype), batch_seg)
+            Na_per_batch = tf.math.segment_sum(tf.ones_like(batch_seg, dtype=self.dtype), batch_seg)
             if Q_tot is None: #assume desired total charge zero if not given
                 Q_tot = tf.zeros_like(Na_per_batch, dtype=self.dtype)
             #return scaled charges (such that they have the desired total charge)
-            return Qa + tf.gather(((Q_tot-tf.segment_sum(Qa, batch_seg))/Na_per_batch), batch_seg)
+            return Qa + tf.gather(((Q_tot-tf.math.segment_sum(Qa, batch_seg))/Na_per_batch), batch_seg)
 
     #switch function for electrostatic interaction (switches between shielded and unshielded electrostatic interaction)
     def _switch(self, Dij):
@@ -220,7 +220,7 @@ class NeuralNetwork:
         x3 = x*x*x
         x4 = x3*x
         x5 = x4*x
-        return tf.where(Dij < cut, 6*x5-15*x4+10*x3, tf.ones_like(Dij))
+        return tf.compat.v1.where(Dij < cut, 6*x5-15*x4+10*x3, tf.ones_like(Dij))
 
     #calculates the electrostatic energy per atom 
     #for very small distances, the 1/r law is shielded to avoid singularities
@@ -247,8 +247,8 @@ class NeuralNetwork:
             Eele_shielded = 1.0/DijS + DijS/cut2 - 2.0/cut
             #combine shielded and ordinary interactions and apply prefactors 
             Eele = self.kehalf*Qi*Qj*(cswitch*Eele_shielded + switch*Eele_ordinary)
-            Eele = tf.where(Dij <= cut, Eele, tf.zeros_like(Eele))
-        return tf.segment_sum(Eele, idx_i) 
+            Eele = tf.compat.v1.where(Dij <= cut, Eele, tf.zeros_like(Eele))
+        return tf.math.segment_sum(Eele, idx_i) 
 
     #save the current model
     def save(self, sess, save_path, global_step=None):
@@ -281,7 +281,7 @@ class NeuralNetwork:
     @property
     def variables(self):
         scope_filter = self.scope + '/'
-        varlist = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope_filter)
+        varlist = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope=scope_filter)
         return { v.name[len(scope_filter):]: v for v in varlist }
     
     @property

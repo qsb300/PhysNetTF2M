@@ -8,17 +8,17 @@ def swish(x):
 #First time softplus was used as activation function: "Incorporating Second-Order Functional Knowledge for Better Option Pricing"
 #(https://papers.nips.cc/paper/1920-incorporating-second-order-functional-knowledge-for-better-option-pricing.pdf)
 def _softplus(x):
-    return tf.log1p(tf.exp(x))
+    return tf.math.log1p(tf.exp(x))
 
 def softplus(x):
     #this definition is for numerical stability for x larger than 15 (single precision) 
     #or x larger than 34 (double precision), there is no numerical difference anymore 
     #between the softplus and a linear function
-    return tf.where(x < 15.0, _softplus(tf.where(x < 15.0, x, tf.zeros_like(x))), x) 
+    return tf.compat.v1.where(x < 15.0, _softplus(tf.compat.v1.where(x < 15.0, x, tf.zeros_like(x))), x) 
 
 def shifted_softplus(x):
     #return softplus(x) - np.log(2.0)
-    return tf.nn.softplus(x) - tf.log(2.0)
+    return tf.nn.softplus(x) - tf.math.log(2.0)
 
 #this ensures that the function is close to linear near the origin!
 def scaled_shifted_softplus(x):
@@ -30,7 +30,7 @@ def self_normalizing_shifted_softplus(x):
 
 #general: log((exp(alpha)-1)*exp(x)+1)-alpha
 def smooth_ELU(x):
-    return tf.log1p(1.718281828459045*tf.exp(x))-1.0 #(e-1) = 1.718281828459045
+    return tf.math.log1p(1.718281828459045*tf.exp(x))-1.0 #(e-1) = 1.718281828459045
 
 def self_normalizing_smooth_ELU(x):
     return 1.574030675714671*smooth_ELU(x)

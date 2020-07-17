@@ -12,7 +12,7 @@ class InteractionLayer(NeuronLayer):
     def __init__(self, K, F, num_residual, activation_fn=None, seed=None, scope=None, keep_prob=1.0, dtype=tf.float32):
         super().__init__(K, F, activation_fn)
         self._keep_prob = keep_prob
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             #transforms radial basis functions to feature space
             self._k2f = DenseLayer(K, F, W_init=tf.zeros([K, F], dtype=dtype), use_bias=False, seed=seed, scope='k2f', dtype=dtype)
             #rearrange feature vectors for computing the "message"
@@ -25,7 +25,7 @@ class InteractionLayer(NeuronLayer):
             #for performing the final update to the feature vectors
             self._dense = DenseLayer(F, F, seed=seed, scope="dense", dtype=dtype)
             self._u = tf.Variable(tf.ones([F], dtype=dtype), name="u", dtype=dtype)
-            tf.summary.histogram("gates",  self.u)  
+            tf.compat.v1.summary.histogram("gates",  self.u)  
 
     @property
     def keep_prob(self):
@@ -58,14 +58,14 @@ class InteractionLayer(NeuronLayer):
     def __call__(self, x, rbf, idx_i, idx_j):
         #pre-activation
         if self.activation_fn is not None: 
-            xa = tf.nn.dropout(self.activation_fn(x), self.keep_prob)
+            xa = tf.nn.dropout(self.activation_fn(x), 1 - (self.keep_prob))
         else:
-            xa = tf.nn.dropout(x, self.keep_prob)
+            xa = tf.nn.dropout(x, 1 - (self.keep_prob))
         #calculate feature mask from radial basis functions
         g = self.k2f(rbf)
         #calculate contribution of neighbors and central atom
         xi = self.dense_i(xa)
-        xj = tf.segment_sum(g*tf.gather(self.dense_j(xa), idx_j), idx_i)
+        xj = tf.math.segment_sum(g*tf.gather(self.dense_j(xa), idx_j), idx_i)
         #add contributions to get the "message" 
         m = xi + xj 
         for i in range(len(self.residual_layer)):

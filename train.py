@@ -16,6 +16,8 @@ from training.DataContainer import *
 from training.DataProvider  import *
 from training.DataQueue     import *
 
+tf.compat.v1.disable_eager_execution()
+
 #used for creating a "unique" id for a run (almost impossible to generate the same twice)
 def id_generator(size=8, chars=string.ascii_uppercase + string.ascii_lowercase + string.digits):
     return ''.join(random.SystemRandom().choice(chars) for _ in range(size))
@@ -140,25 +142,25 @@ Ea_v, Qa_v, Dij_v, nhloss_v = nn.atomic_properties(Z_v, R_v, idx_i_v, idx_j_v)
 energy_t, forces_t = nn.energy_and_forces_from_atomic_properties(Ea_t, Qa_t, Dij_t, Z_t, R_t, idx_i_t, idx_j_t, Qref_t, batch_seg_t)
 energy_v, forces_v = nn.energy_and_forces_from_atomic_properties(Ea_v, Qa_v, Dij_v, Z_v, R_v, idx_i_v, idx_j_v, Qref_v, batch_seg_v)
 #total charge
-Qtot_t = tf.segment_sum(Qa_t, batch_seg_t)
-Qtot_v = tf.segment_sum(Qa_v, batch_seg_v)
+Qtot_t = tf.math.segment_sum(Qa_t, batch_seg_t)
+Qtot_v = tf.math.segment_sum(Qa_v, batch_seg_v)
 #dipole moment vector
 QR_t = tf.stack([Qa_t*R_t[:,0], Qa_t*R_t[:,1], Qa_t*R_t[:,2]],1)
 QR_v = tf.stack([Qa_v*R_v[:,0], Qa_v*R_v[:,1], Qa_v*R_v[:,2]],1)
-D_t = tf.segment_sum(QR_t, batch_seg_t)
-D_v = tf.segment_sum(QR_v, batch_seg_v)
+D_t = tf.math.segment_sum(QR_t, batch_seg_t)
+D_v = tf.math.segment_sum(QR_v, batch_seg_v)
 
 #function to calculate loss, mean squared error, mean absolute error between two values
 def calculate_errors(val1, val2, weights=1):
-    with tf.name_scope("calculate_errors"):
+    with tf.compat.v1.name_scope("calculate_errors"):
         delta  = tf.abs(val1-val2)
         delta2 = delta**2
-        mse    = tf.reduce_mean(delta2)
-        mae    = tf.reduce_mean(delta)
+        mse    = tf.reduce_mean(input_tensor=delta2)
+        mae    = tf.reduce_mean(input_tensor=delta)
         loss   = mae #mean absolute error loss
     return loss, mse, mae
 
-with tf.name_scope("loss"):
+with tf.compat.v1.name_scope("loss"):
     #calculate energy, force, charge and dipole errors/loss
     #energy
     if data.E is not None:
@@ -226,13 +228,13 @@ with tf.name_scope("loss"):
         dloss_valid = tf.constant(0.0)
 
     #define loss function (used to train the model)
-    l2loss = tf.reduce_mean(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)) 
+    l2loss = tf.reduce_mean(input_tensor=tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES)) 
     loss_t = eloss_train + args.force_weight*floss_train + args.charge_weight*qloss_train + args.dipole_weight*dloss_train + args.nhlambda*nhloss_t + args.l2lambda*l2loss
     loss_v = eloss_valid + args.force_weight*floss_valid + args.charge_weight*qloss_valid + args.dipole_weight*dloss_valid + args.nhlambda*nhloss_v + args.l2lambda*l2loss
 
 #create trainer
 trainer  = Trainer(args.learning_rate, args.decay_steps, args.decay_rate, scope="trainer")
-with tf.name_scope("trainer_ops"):
+with tf.compat.v1.name_scope("trainer_ops"):
     train_op = trainer.build_train_op(loss_t, args.ema_decay, args.max_norm)
     save_variable_backups_op = trainer.save_variable_backups()
     load_averaged_variables_op = trainer.load_averaged_variables()
@@ -240,18 +242,18 @@ with tf.name_scope("trainer_ops"):
 
 #creates a summary from key-value pairs given a dictionary
 def create_summary(dictionary):
-    summary = tf.Summary()
+    summary = tf.compat.v1.Summary()
     for key, value in dictionary.items():
         summary.value.add(tag=key, simple_value=value)
     return summary
 
 #create summary writer
-nn_summary_op = tf.summary.merge_all()
-summary_writer = tf.summary.FileWriter(logdir=log_dir, graph=tf.get_default_graph())
+nn_summary_op = tf.compat.v1.summary.merge_all()
+summary_writer = tf.compat.v1.summary.FileWriter(logdir=log_dir, graph=tf.compat.v1.get_default_graph())
 
 #create saver
-with tf.name_scope("saver"):
-    saver = tf.train.Saver(max_to_keep=50)
+with tf.compat.v1.name_scope("saver"):
+    saver = tf.compat.v1.train.Saver(max_to_keep=50)
 
 #save/load best recorded loss (only the best model is saved)
 if os.path.isfile(best_loss_file):
@@ -305,10 +307,10 @@ def update_averages(num, tmploss_avg, tmploss, emse_avg, emse, emae_avg, emae, f
 num_t, tmploss_avg_t, emse_avg_t, emae_avg_t, fmse_avg_t, fmae_avg_t, qmse_avg_t, qmae_avg_t, dmse_avg_t, dmae_avg_t = reset_averages()
 
 #create tensorflow session
-with tf.Session() as sess:
+with tf.compat.v1.Session() as sess:
     if (args.record_run_metadata > 0):
-        run_options  = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        run_metadata = tf.RunMetadata()
+        run_options  = tf.compat.v1.RunOptions(trace_level=tf.compat.v1.RunOptions.FULL_TRACE)
+        run_metadata = tf.compat.v1.RunMetadata()
     else:
         run_options  = None
         run_metadata = None
@@ -319,7 +321,7 @@ with tf.Session() as sess:
     valid_queue.create_thread(sess, coord)
 
     #initialize variables
-    tf.global_variables_initializer().run()
+    tf.compat.v1.global_variables_initializer().run()
 
     #restore latest checkpoint
     checkpoint = tf.train.latest_checkpoint(log_dir)

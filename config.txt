@@ -15,14 +15,14 @@
 --num_train=400000
 --num_valid=5000
 --seed=42
---max_steps=10000000
+--max_steps=100000
 --learning_rate=0.001
 --max_norm=1000.0
 --ema_decay=0.999
 --keep_prob=1.0
 --l2lambda=0.0
 --nhlambda=0.01
---decay_steps=10000000
+--decay_steps=100000
 --decay_rate=0.1
 --batch_size=32
 --valid_batch_size=1000

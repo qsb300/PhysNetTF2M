@@ -16,16 +16,16 @@ class RBFLayer(NeuronLayer):
         super().__init__(1, K, None)
         self._K = K
         self._cutoff = cutoff
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             #initialize centers
             centers = softplus_inverse(np.linspace(1.0,np.exp(-cutoff),K))
             self._centers = tf.nn.softplus(tf.Variable(np.asarray(centers), name="centers", dtype=dtype))
-            tf.summary.histogram("rbf_centers", self.centers) 
+            tf.compat.v1.summary.histogram("rbf_centers", self.centers) 
 
             #initialize widths (inverse softplus transformation is applied, such that softplus can be used to guarantee positive values)
             widths = [softplus_inverse((0.5/((1.0-np.exp(-cutoff))/K))**2)]*K
             self._widths = tf.nn.softplus(tf.Variable(np.asarray(widths),  name="widths",  dtype=dtype))
-            tf.summary.histogram("rbf_widths", self.widths)
+            tf.compat.v1.summary.histogram("rbf_widths", self.widths)
 
     @property
     def K(self):
@@ -49,7 +49,7 @@ class RBFLayer(NeuronLayer):
         x3 = x**3
         x4 = x3*x
         x5 = x4*x
-        return tf.where(x < 1, 1 - 6*x5 + 15*x4 - 10*x3, tf.zeros_like(x))
+        return tf.compat.v1.where(x < 1, 1 - 6*x5 + 15*x4 - 10*x3, tf.zeros_like(x))
     
     def __call__(self, D):
         D = tf.expand_dims(D, -1) #necessary for proper broadcasting behaviour

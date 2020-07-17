@@ -10,7 +10,7 @@ class ResidualLayer(NeuronLayer):
     def __init__(self, n_in, n_out, activation_fn=None, W_init=None, b_init=None, use_bias=True, seed=None, scope=None, keep_prob=1.0, dtype=tf.float32):
         super().__init__(n_in, n_out, activation_fn)
         self._keep_prob = keep_prob
-        with tf.variable_scope(scope):
+        with tf.compat.v1.variable_scope(scope):
             self._dense    = DenseLayer(n_in,  n_out, activation_fn=activation_fn, 
                 W_init=W_init, b_init=b_init, use_bias=use_bias, seed=seed, scope="dense", dtype=dtype)
             self._residual = DenseLayer(n_out, n_out, activation_fn=None, 
@@ -31,8 +31,8 @@ class ResidualLayer(NeuronLayer):
     def __call__(self, x):
         #pre-activation
         if self.activation_fn is not None: 
-            y = tf.nn.dropout(self.activation_fn(x), self.keep_prob)
+            y = tf.nn.dropout(self.activation_fn(x), 1 - (self.keep_prob))
         else:
-            y = tf.nn.dropout(x, self.keep_prob)
+            y = tf.nn.dropout(x, 1 - (self.keep_prob))
         x += self.residual(self.dense(y))
         return x
