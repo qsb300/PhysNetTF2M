@@ -6,7 +6,7 @@ class Trainer:
     def __init__(self, learning_rate=1e-3, decay_steps=100000, decay_rate=0.96, scope=None):
         self._scope = scope
         with tf.compat.v1.variable_scope(self.scope):
-            self._global_step   = tf.Variable(0, name='global_step', trainable=False)
+            self._global_step   = tf.compat.v1.Variable(0, name='global_step', trainable=False)
             self._learning_rate = tf.compat.v1.train.exponential_decay(learning_rate, self._global_step, decay_steps, decay_rate)
             self._optimizer     = AMSGrad(learning_rate=self._learning_rate)
 
